@@ -161,6 +161,11 @@ export class CrawlerHost extends RPCHost {
             if (!thisBatch.length) {
                 return;
             }
+            if (!Crawled.DB) {
+                // DB not ready yet, put the items back
+                this.batchedCaches.push(...thisBatch);
+                return;
+            }
             const batch = Crawled.DB.batch();
 
             for (const x of thisBatch) {
