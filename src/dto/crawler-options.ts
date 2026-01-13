@@ -41,11 +41,11 @@ const BASE_URL_MODE_VALUES = new Set<string>(BASE_URL_MODES);
 
 class Viewport extends AutoCastable {
     @Prop({
-        default: 1024
+        default: 1920
     })
     width!: number;
     @Prop({
-        default: 1024
+        default: 1080
     })
     height!: number;
     @Prop()
