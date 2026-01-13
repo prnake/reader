@@ -34,12 +34,19 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY build ./build
+# COPY build ./build
+# COPY licensed ./licensed
+COPY integrity-check.cjs .
+COPY tsconfig.json .
+COPY src ./src
 COPY public ./public
-COPY licensed ./licensed
 
 RUN rm -rf ~/.config/chromium && mkdir -p ~/.config/chromium
 
+RUN mkdir -p licensed && curl -o licensed/GeoLite2-City.mmdb https://raw.githubusercontent.com/P3TERX/GeoLite.mmdb/download/GeoLite2-City.mmdb
+RUN curl -o licensed/SourceHanSansSC-Regular.otf https://raw.githubusercontent.com/adobe-fonts/source-han-sans/refs/heads/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
+
+RUN NODE_COMPILE_CACHE=node_modules npm run build
 RUN NODE_COMPILE_CACHE=node_modules npm run dry-run
 
 ENV OVERRIDE_CHROME_EXECUTABLE_PATH=/usr/bin/google-chrome-stable

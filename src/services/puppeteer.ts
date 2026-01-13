@@ -564,7 +564,9 @@ export class PuppeteerControl extends AsyncService {
             executablePath: process.env.OVERRIDE_CHROME_EXECUTABLE_PATH,
             args: [
                 '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled'
+                '--disable-blink-features=AutomationControlled','--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
             ]
         }).catch((err: any) => {
             this.logger.error(`Unknown firebase issue, just die fast.`, { err });
