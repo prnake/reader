@@ -154,14 +154,29 @@ export class SnapshotFormatter extends AsyncService {
         let pdfMode = false;
         // in case of Google Web Cache content
         if (snapshot.pdfs?.length && (!snapshot.title || snapshot.title.startsWith('cache:'))) {
-            const pdf = await this.pdfExtractor.cachedExtract(snapshot.pdfs[0],
+            const pdfUrl = snapshot.pdfs[0];
+            let localFilePath: string | undefined;
+            if (pdfUrl.startsWith('file://')) {
+                try {
+                    localFilePath = new URL(pdfUrl).pathname;
+                    // Handle Windows paths (e.g., /C:/path -> C:/path)
+                    if (process.platform === 'win32' && localFilePath.startsWith('/') && localFilePath.charAt(2) === ':') {
+                        localFilePath = localFilePath.substring(1);
+                    }
+                } catch (e) {
+                    // Invalid URL, ignore
+                }
+            }
+            const pdf = await this.pdfExtractor.cachedExtract(pdfUrl,
                 this.threadLocal.get('cacheTolerance'),
-                snapshot.pdfs[0].startsWith('http') ? undefined : snapshot.href,
+                pdfUrl.startsWith('http') ? undefined : snapshot.href,
+                localFilePath,
             );
             if (pdf) {
                 pdfMode = true;
                 snapshot.title = pdf.meta?.Title;
                 snapshot.text = pdf.text || snapshot.text;
+                const parsedDate = this.pdfExtractor.parsePdfDate(pdf.meta?.ModDate || pdf.meta?.CreationDate);
                 snapshot.parsed = {
                     content: pdf.content,
                     textContent: pdf.content,
@@ -169,7 +184,7 @@ export class SnapshotFormatter extends AsyncService {
                     byline: pdf.meta?.Author,
                     lang: pdf.meta?.Language || undefined,
                     title: pdf.meta?.Title,
-                    publishedTime: this.pdfExtractor.parsePdfDate(pdf.meta?.ModDate || pdf.meta?.CreationDate)?.toISOString(),
+                    publishedTime: parsedDate?.toISOString() || pdf.fileCreationTime?.toISOString(),
                 };
             }
         }

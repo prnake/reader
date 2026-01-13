@@ -17,8 +17,16 @@ dayjs.extend(timezone);
 
 const pPdfjs = import('pdfjs-dist/legacy/build/pdf.mjs');
 const nodeCmapUrl = path.resolve(require.resolve('pdfjs-dist'), '../../cmaps') + '/';
+import { stat } from 'fs/promises';
 
 const md5Hasher = new HashManager('md5', 'hex');
+
+export interface PDFExtractionResult {
+    meta: Record<string, any>;
+    content: string;
+    text: string;
+    fileCreationTime?: Date;
+}
 
 function stdDev(numbers: number[]) {
     const mean = _.mean(numbers);
@@ -90,7 +98,7 @@ export class PDFExtractor extends AsyncService {
         };
     }
 
-    async extract(url: string | URL) {
+    async extract(url: string | URL): Promise<PDFExtractionResult> {
         let loadingTask: PDFDocumentLoadingTask;
 
         if (typeof url === 'string' && this.isDataUrl(url)) {
@@ -273,7 +281,7 @@ export class PDFExtractor extends AsyncService {
         return { meta: meta.info as Record<string, any>, content: mdChunks.join(''), text: rawChunks.join('') };
     }
 
-    async cachedExtract(url: string, cacheTolerance: number = 1000 * 3600 * 24, alternativeUrl?: string) {
+    async cachedExtract(url: string, cacheTolerance: number = 1000 * 3600 * 24, alternativeUrl?: string, localFilePath?: string): Promise<PDFExtractionResult | undefined> {
         if (!url) {
             return undefined;
         }
@@ -297,7 +305,7 @@ export class PDFExtractor extends AsyncService {
             if (!stale) {
                 if (cache.content && cache.text) {
                     return {
-                        meta: cache.meta,
+                        meta: cache.meta || {},
                         content: cache.content,
                         text: cache.text
                     };
@@ -347,7 +355,25 @@ export class PDFExtractor extends AsyncService {
             });
         }
 
+        // Get file creation time as fallback for PDFs without valid metadata date
+        if (localFilePath) {
+            const fileCreationTime = await this.getFileCreationTime(localFilePath);
+            if (fileCreationTime) {
+                extracted.fileCreationTime = fileCreationTime;
+            }
+        }
+
         return extracted;
+    }
+
+    async getFileCreationTime(filePath: string): Promise<Date | undefined> {
+        try {
+            const stats = await stat(filePath);
+            return stats.mtime;
+        } catch (err) {
+            this.logger.warn(`Failed to get file creation time for ${filePath}`, { err });
+            return undefined;
+        }
     }
 
     parsePdfDate(pdfDate: string | undefined) {
