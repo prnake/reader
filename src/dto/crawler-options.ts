@@ -521,6 +521,9 @@ export class CrawlerOptions extends AutoCastable {
         if (engine) {
             instance.engine = engine;
         }
+        if (!instance.engine) {
+            instance.engine = ENGINE_TYPE.BROWSER;
+        }
         if (instance.engine) {
             instance.engine = instance.engine.toLowerCase();
         }
