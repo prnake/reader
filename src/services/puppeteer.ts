@@ -1168,7 +1168,7 @@ export class PuppeteerControl extends AsyncService {
             } catch (err: any) {
                 this.logger.warn(`Page ${sn}: Failed to finalize ${url}`, { err });
             }
-            if (!snapshot?.html) {
+            if (!snapshot?.html && pdfUrls.length === 0) {
                 return;
             }
 
@@ -1253,7 +1253,7 @@ export class PuppeteerControl extends AsyncService {
                 let error;
                 await Promise.race(ckpt).catch((err) => error = err);
                 if (successfullyDone && !error) {
-                    if (!snapshot && !screenshot) {
+                    if (!snapshot && !screenshot && pdfUrls.length === 0) {
                         throw new AssertionFailureError(`Could not extract any meaningful content from the page`);
                     }
                     yield {
