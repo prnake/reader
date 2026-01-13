@@ -1154,7 +1154,8 @@ export class CrawlerHost extends RPCHost {
                     let filePath = '';
                     if (sideLoaded.body instanceof Blob) {
                         const tmpPath = this.tempFileManager.alloc();
-                        await writeFile(tmpPath, sideLoaded.body.stream());
+                        const arrayBuffer = await sideLoaded.body.arrayBuffer();
+                        await writeFile(tmpPath, new Uint8Array(arrayBuffer));
                         this.tempFileManager.bindPathTo(this.threadLocal.ctx, tmpPath);
                         filePath = tmpPath;
                     } else {

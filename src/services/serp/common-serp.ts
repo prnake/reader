@@ -5,7 +5,7 @@ import { JSDomControl } from '../jsdom';
 import _ from 'lodash';
 import { WebSearchEntry } from './compat';
 import { ServiceBadAttemptError } from '../errors';
-import commonSerpClients, { CommonSerpImageResponse, CommonSerpNewsResponse, CommonSerpWebResponse } from '../../shared/3rd-party/common-serp';
+import { commonSerpClients, CommonSerpImageResponse, CommonSerpImageResult, CommonSerpNewsResponse, CommonSerpNewsResult, CommonSerpWebResponse, CommonSerpWebResult } from '../../shared/3rd-party/common-serp';
 import { AsyncLocalContext } from '../async-context';
 
 @singleton()
@@ -84,7 +84,7 @@ export class CommonGoogleSERP extends AsyncService {
 
         const r = await client.queryJSON(url.href) as CommonSerpWebResponse;
 
-        return r.organic.map((x)=> ({
+        return r.organic.map((x: CommonSerpWebResult)=> ({
             link: x.link,
             title: x.title,
             snippet: x.description,
@@ -101,7 +101,7 @@ export class CommonGoogleSERP extends AsyncService {
 
         const r = await client.queryJSON(url.href) as CommonSerpNewsResponse;
 
-        return r.news.map((x)=> ({
+        return r.news.map((x: CommonSerpNewsResult)=> ({
             link: x.link,
             title: x.title,
             snippet: x.description,
@@ -121,7 +121,7 @@ export class CommonGoogleSERP extends AsyncService {
 
         const r = await client.queryJSON(url.href) as CommonSerpImageResponse;
 
-        return r.images.map((x)=> ({
+        return r.images.map((x: CommonSerpImageResult)=> ({
             link: x.link,
             title: x.title,
             snippet: x.image_alt,

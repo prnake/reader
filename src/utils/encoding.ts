@@ -1,6 +1,22 @@
 import { createReadStream } from 'fs';
 import { Readable } from 'stream';
 
+// Polyfill for ReadableStream async iterator
+if (!('values' in ReadableStream.prototype)) {
+    (ReadableStream.prototype as any)[Symbol.asyncIterator] = async function* (this: ReadableStream) {
+        const reader = this.getReader();
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                yield value;
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    };
+}
+
 export async function decodeFileStream(
     fileStream: Readable,
     encoding: string = 'utf-8',
@@ -9,7 +25,7 @@ export async function decodeFileStream(
     (Readable.toWeb(fileStream) as ReadableStream).pipeThrough(decodeStream);
     const chunks = [];
 
-    for await (const chunk of decodeStream.readable) {
+    for await (const chunk of decodeStream.readable as any) {
         chunks.push(chunk);
     }
 
@@ -25,7 +41,7 @@ export async function readFile(
     (Readable.toWeb(createReadStream(filePath)) as ReadableStream).pipeThrough(decodeStream);
     const chunks = [];
 
-    for await (const chunk of decodeStream.readable) {
+    for await (const chunk of decodeStream.readable as any) {
         chunks.push(chunk);
     }
 
@@ -40,7 +56,7 @@ export async function readBlob(
     blob.stream().pipeThrough(decodeStream);
     const chunks = [];
 
-    for await (const chunk of decodeStream.readable) {
+    for await (const chunk of decodeStream.readable as any) {
         chunks.push(chunk);
     }
 

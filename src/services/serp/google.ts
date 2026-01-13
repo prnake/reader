@@ -11,7 +11,7 @@ import { ApplicationError } from 'civkit/civ-rpc';
 import { ServiceBadApproachError, ServiceBadAttemptError } from '../errors';
 import { parseJSONText } from 'civkit/vectorize';
 import { retry, retryWith } from 'civkit/decorators';
-import { SERPProxyProviderService } from '../../shared/services/proxy-provider';
+import { ProxyProviderService } from '../../shared/services/proxy-provider';
 import { readBlob } from '../../utils/encoding';
 import { createContext, Script } from 'vm';
 import { BrowserContext } from 'puppeteer';
@@ -73,7 +73,7 @@ export class GoogleSERP extends AsyncService {
         protected puppeteerControl: SERPSpecializedPuppeteerControl,
         protected jsDomControl: JSDomControl,
         protected curlControl: CurlControl,
-        protected proxyProvider: SERPProxyProviderService,
+        protected proxyProvider: ProxyProviderService,
         protected asyncLocalContext: AsyncLocalContext,
     ) {
         const filteredDeps = isMainThread ? arguments : _.without(arguments, puppeteerControl);
