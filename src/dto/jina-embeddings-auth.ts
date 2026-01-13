@@ -189,12 +189,12 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
         }).then((r) => {
             JinaEmbeddingsTokenAccount.COLLECTION.doc(this.bearerToken!)
                 .update({ 'wallet.total_balance': JinaEmbeddingsTokenAccount.OPS.increment(-tokenCount) })
-                .catch((err) => {
+                .catch((err: any) => {
                     authDtoLogger.warn(`Failed to update cache for ${uid}: ${err}`, { err: marshalErrorLike(err) });
                 });
 
             return r;
-        }).catch((err) => {
+        }).catch((err: any) => {
             user.wallet.total_balance += tokenCount;
             authDtoLogger.warn(`Failed to report usage for ${uid}: ${err}`, { err: marshalErrorLike(err) });
         });
@@ -251,7 +251,7 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
             throw err;
         }
 
-        const tier = parseInt(user.metadata?.speed_level);
+        const tier = parseInt(user.metadata?.speed_level || '0');
         if (isNaN(tier) || tier < n) {
             throw new TierFeatureConstraintError({
                 message: `Your current plan does not support this feature${feature ? ` (${feature})` : ''}. Please upgrade your plan.`

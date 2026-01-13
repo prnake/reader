@@ -207,7 +207,7 @@ export class AdaptiveCrawlerHost extends RPCHost {
         if (urls.length) {
             const promises = Object.entries(state?.processed ?? {}).map(async ([url, cachePath]) => {
                 if (urls.includes(url)) {
-                    const raw = await this.firebaseObjectStorage.downloadFile(cachePath);
+                    const raw = await this.firebaseObjectStorage.downloadFile(cachePath as string);
                     state!.processed[url] = JSON.parse(raw.toString('utf-8'));
                 }
             });
@@ -273,7 +273,7 @@ export class AdaptiveCrawlerHost extends RPCHost {
             error.reason = result.error.reason;
         }
 
-        await AdaptiveCrawlTask.DB.runTransaction(async (transaction) => {
+        await AdaptiveCrawlTask.DB.runTransaction(async (transaction: any) => {
             const ref = AdaptiveCrawlTask.COLLECTION.doc(shortDigest);
             const state = await transaction.get(ref);
             const data = state.data() as AdaptiveCrawlTask & { createdAt: Timestamp };
@@ -387,7 +387,7 @@ export class AdaptiveCrawlerHost extends RPCHost {
             for (const url of relevantUrls) {
                 let abortContinue = false;
                 let abortBreak = false;
-                await AdaptiveCrawlTask.DB.runTransaction(async (transaction) => {
+                await AdaptiveCrawlTask.DB.runTransaction(async (transaction: any) => {
                     const ref = AdaptiveCrawlTask.COLLECTION.doc(shortDigest);
                     const state = await transaction.get(ref);
                     const data = state.data() as AdaptiveCrawlTask & { createdAt: Timestamp };

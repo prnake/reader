@@ -430,7 +430,7 @@ export class SnapshotFormatter extends AsyncService {
             }
         }
 
-        if (countGPTToken(formatted.content) < 200) {
+        if (countGPTToken(formatted.content || '') < 200) {
             formatted.warning ??= '';
             if (snapshot.isIntermediate) {
                 const msg = 'This page maybe not yet fully loaded, consider explicitly specify a timeout.';

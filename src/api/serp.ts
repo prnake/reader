@@ -112,7 +112,7 @@ export class SerpHost extends RPCHost {
                 .then(() => {
                     this.logger.debug(`Saved ${thisBatch.length} caches by batch`);
                 })
-                .catch((err) => {
+                .catch((err: any) => {
                     this.logger.warn(`Failed to cache search result in batch`, { err });
                 });
         }, 1000 * 10 + Math.round(1000 * Math.random())).unref();
@@ -207,7 +207,7 @@ export class SerpHost extends RPCHost {
 
         const PREMIUM_KEY_LIMIT = 400;
         const rateLimitPolicy = auth.getRateLimits('SEARCH') || [
-            parseInt(user.metadata?.speed_level) >= 2 ?
+            parseInt(user.metadata?.speed_level || '0') >= 2 ?
                 RateLimitDesc.from({
                     occurrence: PREMIUM_KEY_LIMIT,
                     periodSeconds: 60

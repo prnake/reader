@@ -90,7 +90,7 @@ export class SearcherHost extends RPCHost {
                 .then(() => {
                     this.logger.debug(`Saved ${thisBatch.length} caches by batch`);
                 })
-                .catch((err) => {
+                .catch((err: any) => {
                     this.logger.warn(`Failed to cache search result in batch`, { err });
                 });
         }, 1000 * 10 + Math.round(1000 * Math.random())).unref();
@@ -198,7 +198,7 @@ export class SearcherHost extends RPCHost {
         }
 
         const rateLimitPolicy = auth.getRateLimits(rpcReflect.name.toUpperCase()) || [
-            parseInt(user.metadata?.speed_level) >= 2 ?
+            parseInt(user.metadata?.speed_level || '0') >= 2 ?
                 RateLimitDesc.from({
                     occurrence: 1000,
                     periodSeconds: 60

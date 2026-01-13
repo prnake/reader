@@ -171,7 +171,7 @@ export class CrawlerHost extends RPCHost {
                 .then(() => {
                     this.logger.debug(`Saved ${thisBatch.length} caches by batch`);
                 })
-                .catch((err) => {
+                .catch((err: any) => {
                     this.logger.warn(`Failed to save cache in batch`, { err });
                 });
         }, 1000 * 10 + Math.round(1000 * Math.random())).unref();
@@ -283,7 +283,7 @@ export class CrawlerHost extends RPCHost {
             }
 
             const rateLimitPolicy = auth.getRateLimits('CRAWL') || [
-                parseInt(user.metadata?.speed_level) >= 2 ?
+                parseInt(user.metadata?.speed_level || '0') >= 2 ?
                     RateLimitDesc.from({
                         occurrence: 5000,
                         periodSeconds: 60
@@ -769,10 +769,10 @@ export class CrawlerHost extends RPCHost {
             return;
         }
         if (crawlOpts?.engine === ENGINE_TYPE.CF_BROWSER_RENDERING) {
-            const html = await this.cfBrowserRendering.fetchContent(urlToCrawl.href);
+            const result = await this.cfBrowserRendering.fetchContent(urlToCrawl.href);
             const snapshot = {
                 href: urlToCrawl.toString(),
-                html,
+                html: result?.html || '',
                 title: '',
                 text: '',
             } as PageSnapshot;
