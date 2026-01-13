@@ -46,6 +46,7 @@ export interface ReadabilityParsed {
     siteName: string;
     lang: string;
     publishedTime: string;
+    numPages?: number;
 }
 
 export interface PageSnapshot {

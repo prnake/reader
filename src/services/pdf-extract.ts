@@ -26,6 +26,7 @@ export interface PDFExtractionResult {
     content: string;
     text: string;
     fileCreationTime?: Date;
+    numPages?: number;
 }
 
 function stdDev(numbers: number[]) {
@@ -278,7 +279,7 @@ export class PDFExtractor extends AsyncService {
             mdChunks[0] = mdChunks[0].trimStart();
         }
 
-        return { meta: meta.info as Record<string, any>, content: mdChunks.join(''), text: rawChunks.join('') };
+        return { meta: meta.info as Record<string, any>, content: mdChunks.join(''), text: rawChunks.join(''), numPages: doc.numPages };
     }
 
     async cachedExtract(url: string, cacheTolerance: number = 1000 * 3600 * 24, alternativeUrl?: string, localFilePath?: string): Promise<PDFExtractionResult | undefined> {
@@ -307,7 +308,8 @@ export class PDFExtractor extends AsyncService {
                     return {
                         meta: cache.meta || {},
                         content: cache.content,
-                        text: cache.text
+                        text: cache.text,
+                        numPages: (cache as any).numPages
                     };
                 }
 
@@ -318,7 +320,8 @@ export class PDFExtractor extends AsyncService {
                     return {
                         meta: cached.meta,
                         content: cached.content,
-                        text: cached.text
+                        text: cached.text,
+                        numPages: cached.numPages
                     };
                 } catch (err) {
                     this.logger.warn(`Unable to load cached content for ${nameUrl}`, { err });

@@ -25,6 +25,7 @@ export interface FormattedPage {
     url?: string;
     content?: string;
     publishedTime?: string;
+    numPages?: number;
     html?: string;
     text?: string;
     screenshotUrl?: string;
@@ -185,6 +186,7 @@ export class SnapshotFormatter extends AsyncService {
                     lang: pdf.meta?.Language || undefined,
                     title: pdf.meta?.Title,
                     publishedTime: parsedDate?.toISOString() || pdf.fileCreationTime?.toISOString(),
+                    numPages: pdf.numPages,
                 };
             }
         }
@@ -213,6 +215,7 @@ export class SnapshotFormatter extends AsyncService {
                 description: (snapshot.description || '').trim(),
                 url: nominalUrl?.toString() || snapshot.href?.trim(),
                 publishedTime: snapshot.parsed?.publishedTime || undefined,
+                numPages: snapshot.parsed?.numPages,
             };
 
             Object.assign(f, formatted);
@@ -408,6 +411,7 @@ export class SnapshotFormatter extends AsyncService {
             url: nominalUrl?.toString() || snapshot.href?.trim(),
             content: contentText,
             publishedTime: snapshot.parsed?.publishedTime || undefined,
+            numPages: snapshot.parsed?.numPages,
         };
 
         if (snapshot.status) {
@@ -475,6 +479,9 @@ export class SnapshotFormatter extends AsyncService {
             const mixins = [];
             if (this.publishedTime) {
                 mixins.push(`Published Time: ${this.publishedTime}`);
+            }
+            if (this.numPages) {
+                mixins.push(`Number of Pages: ${this.numPages}`);
             }
             const suffixMixins = [];
             if (this.images) {
