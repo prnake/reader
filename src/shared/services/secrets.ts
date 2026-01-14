@@ -9,6 +9,7 @@ export class SecretExposer extends AsyncService {
     CLOUDFLARE_API_TOKEN: string = process.env.CLOUDFLARE_API_TOKEN || '';
     CLOUD_FLARE_API_KEY: string = process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUD_FLARE_API_KEY || '';
     JINA_SERP_API_KEY: string = process.env.JINA_SERP_API_KEY || '';
+    BYPASS_LEVEL: string = process.env.BYPASS_LEVEL || '';
 
     constructor() {
         super();
@@ -27,6 +28,7 @@ const envConfig = {
     CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
     CLOUD_FLARE_API_KEY: process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUD_FLARE_API_KEY || '',
     JINA_SERP_API_KEY: process.env.JINA_SERP_API_KEY || '',
+    BYPASS_LEVEL: process.env.BYPASS_LEVEL || '',
 };
 
 export default envConfig;

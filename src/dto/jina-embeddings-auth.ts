@@ -238,6 +238,10 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
     }
 
     async assertTier(n: number, feature?: string) {
+        if (envConfig.BYPASS_LEVEL) {
+            return true;
+        }
+
         let user;
         try {
             user = await this.assertUser();
