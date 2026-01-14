@@ -50,6 +50,7 @@ import { MiscService } from '../services/misc';
 import { HTTPServiceError } from 'civkit/http';
 import { GeoIPService } from '../services/geoip';
 import { writeFile } from 'fs/promises';
+import envConfig from '../shared/services/secrets';
 
 export interface ExtraScrappingOptions extends ScrappingOptions {
     withIframe?: boolean | 'quoted';
@@ -332,7 +333,7 @@ export class CrawlerHost extends RPCHost {
             });
         }
 
-        if (!uid) {
+        if (!uid && !envConfig.BYPASS_LEVEL) {
             // Enforce no proxy is allocated for anonymous users due to abuse.
             crawlerOptions.proxy = 'none';
             const blockade = (await DomainBlockade.fromFirestoreQuery(
