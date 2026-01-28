@@ -2,11 +2,7 @@ import { AsyncService } from 'civkit';
 import { singleton } from 'tsyringe';
 
 const SUPPORTED_COUNTRIES = [
-    'auto', 'any', 'us', 'uk', 'gb', 'de', 'fr', 'jp', 'cn',
-    'ca', 'es', 'it', 'se', 'gr', 'pt', 'nl', 'be', 'ru', 'ua', 'pl',
-    'il', 'tr', 'au', 'my', 'th', 'kr', 'ph', 'sg', 'hk', 'tw', 'in',
-    'pk', 'ir', 'id', 'az', 'kz', 'ae', 'mx', 'br', 'ar', 'cl', 'pe',
-    'ec', 'co', 'za', 'eg', 'sa', 'dk', 'eu'
+    'auto', 'any', 'us', 'jp', 'tw'
 ];
 
 @singleton()

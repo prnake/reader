@@ -51,6 +51,8 @@ RUN NODE_COMPILE_CACHE=node_modules npm run dry-run
 
 ENV OVERRIDE_CHROME_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 ENV LD_PRELOAD=/usr/local/lib/libcurl-impersonate.so CURL_IMPERSONATE=chrome116 CURL_IMPERSONATE_HEADERS=no
+# curl-impersonate 并发重试次数，默认3次。并发执行多次请求，选择状态码最好的结果以提高成功率
+ENV CURL_IMPERSONATE_CONCURRENT_RETRIES=3
 ENV NODE_COMPILE_CACHE=node_modules
 ENV PORT=8080
 
