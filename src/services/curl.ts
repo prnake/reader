@@ -348,21 +348,8 @@ export class CurlControl extends AsyncService {
     }
 
     /**
-     * 读取流的所有数据并返回 Buffer
-     */
-    private async readStreamToBuffer(stream: Readable): Promise<Buffer> {
-        const chunks: Buffer[] = [];
-        for await (const chunk of stream) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        }
-        return Buffer.concat(chunks as any);
-    }
-
-    /**
-     * 并发执行多次 curl 请求，等待所有请求完成，选择最大的结果
-     * 选择策略：
-     * 1. 优先选择状态码最好的（200 > 2xx > 其他）
-     * 2. 如果状态码相同，选择 HTML 内容最长的
+     * 并发执行多次 curl 请求，取第一个返回 200 的请求
+     * 如果没有 200 的请求，等待所有请求完成后选择状态码最好的
      * 并发次数由环境变量 CURL_IMPERSONATE_CONCURRENT_RETRIES 控制，默认3次
      */
     async urlToStream(urlToCrawl: URL, crawlOpts?: CURLScrappingOptions): Promise<{
@@ -378,111 +365,86 @@ export class CurlControl extends AsyncService {
             return this._urlToStreamSingle(urlToCrawl, crawlOpts);
         }
 
-        // 创建多个并发请求
-        const promises = Array.from({ length: retries }, () => 
-            this._urlToStreamSingle(urlToCrawl, crawlOpts)
-        );
+        type ResultType = {
+            statusCode: number,
+            statusText?: string,
+            data?: Readable,
+            headers: HeaderInfo[],
+        };
 
-        // 使用 Promise.allSettled 等待所有请求完成
-        const results = await Promise.allSettled(promises);
+        // 存储所有结果（无论成功还是失败）
+        const allResults: Array<{ result?: ResultType; error?: any; index: number; settled: boolean }> = 
+            Array.from({ length: retries }, (_, i) => ({ index: i, settled: false }));
         
-        // 收集所有成功的结果
-        const successfulResults: Array<{
-            value: {
-                statusCode: number,
-                statusText?: string,
-                data?: Readable,
-                headers: HeaderInfo[],
-            },
-            index: number,
-            score: number
-        }> = [];
+        let resolvedWith200 = false;
 
-        for (let i = 0; i < results.length; i++) {
-            const result = results[i];
-            if (result.status === 'fulfilled') {
-                const score = this.getStatusCodeScore(result.value.statusCode);
-                successfulResults.push({
-                    value: result.value,
-                    index: i,
-                    score
-                });
-            }
-        }
+        return new Promise<ResultType>((resolve, reject) => {
+            let settledCount = 0;
 
-        // 如果至少有一个成功的结果
-        if (successfulResults.length > 0) {
-            // 按分数降序排序
-            successfulResults.sort((a, b) => b.score - a.score);
-            
-            // 找出最高分数的所有结果（状态码相同的结果）
-            const highestScore = successfulResults[0].score;
-            const sameScoreResults = successfulResults.filter(r => r.score === highestScore);
-            
-            type ResultWithData = typeof successfulResults[0] & {
-                dataLength?: number;
-                dataBuffer?: Buffer;
-            };
-            
-            let bestResult: ResultWithData;
-            
-            // 如果只有一个最高分的结果，直接返回
-            if (sameScoreResults.length === 1) {
-                bestResult = sameScoreResults[0];
-            } else {
-                // 如果有多个相同状态码的结果，读取数据并比较长度
-                this.logger.debug(`CURL multiple results with same status code, comparing data length`, {
-                    statusCode: sameScoreResults[0].value.statusCode,
-                    count: sameScoreResults.length
-                });
-                
-                // 读取所有相同状态码结果的数据
-                const resultsWithData: ResultWithData[] = await Promise.all(
-                    sameScoreResults.map(async (result) => {
-                        let dataLength = 0;
-                        let dataBuffer: Buffer | undefined;
-                        
-                        if (result.value.data) {
-                            try {
-                                dataBuffer = await this.readStreamToBuffer(result.value.data);
-                                dataLength = dataBuffer.length;
-                            } catch (err) {
-                                this.logger.warn(`Failed to read stream data for comparison`, { err, index: result.index });
-                            }
+            // 创建并发请求
+            for (let i = 0; i < retries; i++) {
+                this._urlToStreamSingle(urlToCrawl, crawlOpts)
+                    .then((result) => {
+                        allResults[i].result = result;
+                        allResults[i].settled = true;
+                        settledCount++;
+
+                        // 如果是 200 且还没有返回过 200 的结果，立即返回
+                        if (result.statusCode === 200 && !resolvedWith200) {
+                            resolvedWith200 = true;
+                            this.logger.debug(`CURL first 200 response received for ${urlToCrawl.origin}`, {
+                                totalRetries: retries,
+                                selectedIndex: i,
+                                settledCount
+                            });
+                            resolve(result);
+                            return;
                         }
-                        
-                        return {
-                            ...result,
-                            dataLength,
-                            dataBuffer
-                        };
+
+                        // 所有请求都完成了，但没有200，选择最好的结果
+                        if (settledCount === retries && !resolvedWith200) {
+                            this.selectBestResult(urlToCrawl, allResults, retries, resolve, reject);
+                        }
                     })
-                );
-                
-                // 按数据长度降序排序，选择最长的
-                resultsWithData.sort((a, b) => (b.dataLength || 0) - (a.dataLength || 0));
-                bestResult = resultsWithData[0];
-                
-                this.logger.debug(`CURL selected result with longest data`, {
-                    selectedIndex: bestResult.index,
-                    dataLength: bestResult.dataLength,
-                    allLengths: resultsWithData.map(r => ({ index: r.index, length: r.dataLength }))
-                });
-                
-                // 如果读取了数据，需要从 Buffer 重新创建 Readable stream
-                if (bestResult.dataBuffer) {
-                    const dataBuffer = bestResult.dataBuffer; // 保存到局部变量
-                    const newStream = new Readable({
-                        read() {
-                            this.push(dataBuffer);
-                            this.push(null); // 结束流
+                    .catch((error) => {
+                        allResults[i].error = error;
+                        allResults[i].settled = true;
+                        settledCount++;
+
+                        // 所有请求都完成了，选择最好的结果
+                        if (settledCount === retries && !resolvedWith200) {
+                            this.selectBestResult(urlToCrawl, allResults, retries, resolve, reject);
                         }
                     });
-                    bestResult.value.data = newStream;
-                }
             }
+        });
+    }
+
+    /**
+     * 从所有结果中选择最好的结果
+     */
+    private selectBestResult(
+        urlToCrawl: URL,
+        allResults: Array<{ result?: { statusCode: number; statusText?: string; data?: Readable; headers: HeaderInfo[] }; error?: any; index: number; settled: boolean }>,
+        retries: number,
+        resolve: (value: { statusCode: number; statusText?: string; data?: Readable; headers: HeaderInfo[] }) => void,
+        reject: (reason?: any) => void
+    ) {
+        // 收集所有成功的结果
+        const successfulResults = allResults
+            .filter(r => r.result)
+            .map(r => ({
+                value: r.result!,
+                index: r.index,
+                score: this.getStatusCodeScore(r.result!.statusCode)
+            }));
+
+        if (successfulResults.length > 0) {
+            // 按分数降序排序，选择最好的
+            successfulResults.sort((a, b) => b.score - a.score);
+            const bestResult = successfulResults[0];
             
-            this.logger.debug(`CURL concurrent retry completed for ${urlToCrawl.origin}`, {
+            this.logger.debug(`CURL no 200 response, selected best result for ${urlToCrawl.origin}`, {
                 totalRetries: retries,
                 successfulCount: successfulResults.length,
                 selectedIndex: bestResult.index,
@@ -490,23 +452,19 @@ export class CurlControl extends AsyncService {
                 allStatusCodes: successfulResults.map(r => ({ index: r.index, statusCode: r.value.statusCode }))
             });
             
-            return bestResult.value;
+            resolve(bestResult.value);
+            return;
         }
 
-        // 如果所有请求都失败了，返回最后一个错误
-        const lastRejection = results[results.length - 1];
-        if (lastRejection.status === 'rejected') {
-            this.logger.warn(`CURL all ${retries} concurrent retries failed for ${urlToCrawl.origin}`, {
-                errors: results.map((r, i) => ({
-                    index: i,
-                    error: r.status === 'rejected' ? r.reason : null
-                }))
-            });
-            throw lastRejection.reason;
-        }
-
-        // 理论上不应该到达这里
-        throw new AssertionFailureError(`Unexpected state in concurrent curl retries for ${urlToCrawl.origin}`);
+        // 所有请求都失败了
+        const lastError = allResults.find(r => r.error)?.error;
+        this.logger.warn(`CURL all ${retries} concurrent retries failed for ${urlToCrawl.origin}`, {
+            errors: allResults.map(r => ({
+                index: r.index,
+                error: r.error || null
+            }))
+        });
+        reject(lastError || new AssertionFailureError(`All ${retries} concurrent requests failed for ${urlToCrawl.origin}`));
     }
 
     async urlToFile(urlToCrawl: URL, crawlOpts?: CURLScrappingOptions) {
