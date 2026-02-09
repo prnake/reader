@@ -622,9 +622,20 @@ export class CrawlerOptions extends AutoCastable {
             return false;
         }
         const presumedTiming = this.presumedRespondTiming;
+
+        // 检查内容是否为空 - 如果 parsed.content 为空，可能页面还在渲染中，不应提前返回
+        // 除非是 HTML 模式（只需要 html）或截图模式
+        const hasContent = Boolean(snapshot.parsed?.content);
+        const isHtmlOnlyMode = presumedTiming === RESPOND_TIMING.HTML;
+        const isScreenshotMode = this.respondWith.includes('screenshot') || this.respondWith.includes('pageshot');
+
         if (presumedTiming === RESPOND_TIMING.MEDIA_IDLE && snapshot.lastMediaResourceLoaded && snapshot.lastMutationIdle) {
             const now = Date.now();
             if ((Math.max(snapshot.lastMediaResourceLoaded, snapshot.lastContentResourceLoaded || 0) + 500) < now) {
+                // 媒体模式下如果没有内容，继续等待（除非是截图模式）
+                if (!hasContent && !isScreenshotMode) {
+                    return false;
+                }
                 return true;
             }
         }
@@ -637,6 +648,10 @@ export class CrawlerOptions extends AutoCastable {
         if (presumedTiming === RESPOND_TIMING.RESOURCE_IDLE && snapshot.lastContentResourceLoaded && snapshot.lastMutationIdle) {
             const now = Date.now();
             if ((snapshot.lastContentResourceLoaded + 500) < now) {
+                // 资源加载完成但内容为空，可能 JS 还在渲染，继续等待
+                if (!hasContent && !isHtmlOnlyMode && !isScreenshotMode) {
+                    return false;
+                }
                 return true;
             }
         }
@@ -653,6 +668,10 @@ export class CrawlerOptions extends AutoCastable {
             return false;
         }
         if (presumedTiming === RESPOND_TIMING.MUTATION_IDLE && snapshot.lastMutationIdle) {
+            // mutation-idle 模式下如果没有内容，继续等待
+            if (!hasContent && !isHtmlOnlyMode && !isScreenshotMode) {
+                return false;
+            }
             return true;
         }
         if (this.respondWith.includes('lm')) {

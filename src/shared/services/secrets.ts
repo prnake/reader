@@ -10,6 +10,7 @@ export class SecretExposer extends AsyncService {
     CLOUD_FLARE_API_KEY: string = process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUD_FLARE_API_KEY || '';
     JINA_SERP_API_KEY: string = process.env.JINA_SERP_API_KEY || '';
     BYPASS_LEVEL: string = process.env.BYPASS_LEVEL || '';
+    OXYLAB_REALTIME: string = process.env.OXYLAB_REALTIME || '';
 
     constructor() {
         super();
@@ -29,6 +30,7 @@ const envConfig = {
     CLOUD_FLARE_API_KEY: process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUD_FLARE_API_KEY || '',
     JINA_SERP_API_KEY: process.env.JINA_SERP_API_KEY || '',
     BYPASS_LEVEL: process.env.BYPASS_LEVEL || '',
+    OXYLAB_REALTIME: process.env.OXYLAB_REALTIME || '',
 };
 
 export default envConfig;

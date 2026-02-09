@@ -29,6 +29,7 @@ import { CurlControl } from '../services/curl';
 import { LmControl } from '../services/lm';
 import { tryDecodeURIComponent } from '../utils/misc';
 import { CFBrowserRendering } from '../services/cf-browser-rendering';
+import { OxylabsRealtimeService } from '../services/oxylabs-realtime';
 
 import { GlobalLogger } from '../services/logger';
 import { RateLimitControl, RateLimitDesc } from '../shared/services/rate-limit';
@@ -91,6 +92,7 @@ export class CrawlerHost extends RPCHost {
         protected puppeteerControl: PuppeteerControl,
         protected curlControl: CurlControl,
         protected cfBrowserRendering: CFBrowserRendering,
+        protected oxylabsRealtime: OxylabsRealtimeService,
         protected proxyProvider: ProxyProviderService,
         protected lmControl: LmControl,
         protected jsdomControl: JSDomControl,
@@ -785,6 +787,19 @@ export class CrawlerHost extends RPCHost {
             } as PageSnapshot;
             yield this.jsdomControl.narrowSnapshot(snapshot, crawlOpts);
             return;
+        }
+
+        if (this.oxylabsRealtime.isAvailable) {
+            const videoId = this.oxylabsRealtime.extractVideoId(urlToCrawl);
+            if (videoId) {
+                try {
+                    const snapshot = await this.oxylabsRealtime.fetchYouTubeSnapshot(urlToCrawl, videoId);
+                    yield this.jsdomControl.narrowSnapshot(snapshot, crawlOpts);
+                    return;
+                } catch (err: any) {
+                    this.logger.warn(`Oxylabs YouTube fetch failed for ${urlToCrawl}, falling through to normal flow`, { err: marshalErrorLike(err) });
+                }
+            }
         }
 
         const cacheTolerance = crawlerOpts?.cacheTolerance ?? this.cacheValidMs;
