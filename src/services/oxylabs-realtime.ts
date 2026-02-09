@@ -133,14 +133,18 @@ export class OxylabsRealtimeService extends AsyncService {
         // Description section
         if (metadata?.description) {
             parts.push('<h2>Description</h2>');
-            parts.push(`<p>${this.escapeHtml(String(metadata.description))}</p>`);
+            const descLines = String(metadata.description).split('\n')
+                .map(line => `<p>${this.escapeHtml(line)}</p>`);
+            parts.push(descLines.join('\n'));
         }
 
         // Transcript section
         const transcript = this.extractTranscript(subtitlesContent);
         if (transcript) {
             parts.push('<h2>Transcript</h2>');
-            parts.push(`<p>${this.escapeHtml(transcript)}</p>`);
+            const transcriptLines = transcript.split('\n')
+                .map(line => `<p>${this.escapeHtml(line)}</p>`);
+            parts.push(transcriptLines.join('\n'));
         }
 
         parts.push('</article>');
@@ -177,19 +181,22 @@ export class OxylabsRealtimeService extends AsyncService {
             return null;
         }
 
-        const words: string[] = [];
+        const lines: string[] = [];
         for (const event of langData.events) {
             if (!event.segs) {
                 continue;
             }
-            for (const seg of event.segs) {
-                if (seg.utf8 && seg.utf8 !== '\n') {
-                    words.push(seg.utf8);
-                }
+            const eventText = event.segs
+                .map((seg: any) => seg.utf8 === '\n' ? ' ' : (seg.utf8 || ''))
+                .join('')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (eventText) {
+                lines.push(eventText);
             }
         }
 
-        return words.join('').replace(/\s{2,}/g, ' ').trim() || null;
+        return lines.join('\n').trim() || null;
     }
 
     private formatDate(dateStr: string): string {
