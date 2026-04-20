@@ -82,7 +82,7 @@ export class BaseAuthDTO<U extends object = object> extends AutoCastable {
         }
 
         if (this.isInternal) {
-            return undefined;
+            return '1';
         }
 
         if (this.bearerToken) {
