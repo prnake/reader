@@ -1715,7 +1715,7 @@ export class CrawlerHost extends RPCHost {
         }
 
         if (opts.proxy && opts.proxy !== 'none') {
-            await auth.assertTier(['auto', 'any'].includes(opts.proxy) ? 0 : 2, 'Proxy allocation');
+            await auth.assertTier(['auto', 'any'].includes(opts.proxy!) ? 0 : 2, 'Proxy allocation');
             chargeScalar = 5;
         }
 
