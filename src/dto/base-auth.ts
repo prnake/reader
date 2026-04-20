@@ -12,7 +12,7 @@ import { InjectProperty } from '../services/registry';
 import { AsyncLocalContext } from '../services/async-context';
 
 import { TierFeatureConstraintError } from '../services/errors';
-import { isIPInNonPublicRange } from '../utils/ip';
+// import { isIPInNonPublicRange } from '../utils/ip';
 
 @Also({
     openapi: {
