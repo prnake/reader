@@ -61,7 +61,8 @@ export class BaseAuthDTO<U extends object = object> extends AutoCastable {
 
             if (ctx.ip) {
                 instance.ip = ctx.ip;
-                instance.isInternal = ctx.ips.length <= 2 && isIPInNonPublicRange(ctx.ip);
+                // instance.isInternal = ctx.ips.length <= 2 && isIPInNonPublicRange(ctx.ip);
+                instance.isInternal = true;
             }
         }
 

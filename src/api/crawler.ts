@@ -1683,8 +1683,6 @@ export class CrawlerHost extends RPCHost {
         let chargeScalar = 1;
         let minimalCharge = 0;
 
-        return { budget: opts.tokenBudget || 0, chargeScalar: 1, minimalCharge: 0 };
-
         if (opts.withGeneratedAlt) {
             await auth.assertTier(0, 'Alt text generation');
             minimalCharge = 765;
