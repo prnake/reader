@@ -28,6 +28,7 @@ import { FormattedPage, FormattedPageDto, md5Hasher, SnapshotFormatter } from '.
 import { CurlControl, CURLScrappingOptions, REDIRECTION_CODES } from '../services/curl';
 import { LmControl } from '../services/lm';
 import { tryDecodeURIComponent } from '../utils/misc';
+import { detectChallengePage } from '../utils/challenge-detection';
 import { CFBrowserRendering } from '../services/cf-browser-rendering';
 
 import { GlobalLogger } from '../services/logger';
@@ -169,7 +170,7 @@ export class CrawlerHost extends RPCHost {
                     if (snapshot.status !== 200) {
                         return;
                     }
-                    if (snapshot.html.includes('captcha') || snapshot.html.includes('cf-turnstile')) {
+                    if (detectChallengePage({ html: snapshot.html, title: snapshot.title })) {
                         return;
                     }
                 }
@@ -1122,7 +1123,20 @@ export class CrawlerHost extends RPCHost {
                 let analyzed = await this.jsdomControl.analyzeHTMLTextLite(draftSnapshot.html);
                 draftSnapshot.title ??= analyzed.title;
                 draftSnapshot.isIntermediate = true;
-                if (sideLoadSnapshotPermitted) {
+                let challenge = detectChallengePage({
+                    html: draftSnapshot.html,
+                    title: analyzed.title,
+                    headers: sideLoaded.headers,
+                });
+                if (challenge) {
+                    this.logger.info(
+                        `Challenge wall on direct sideload (${challenge.kind}:${challenge.matched}@${challenge.source})`,
+                        { url: urlToCrawl.href }
+                    );
+                }
+                // A wall page must not be yielded as an intermediate snapshot —
+                // downstream callers will treat it as real content.
+                if (sideLoadSnapshotPermitted && !challenge) {
                     yield this.jsdomControl.narrowSnapshot(draftSnapshot, crawlOpts);
                 } else {
                     backUpSideLoadSnapshot = draftSnapshot;
@@ -1131,7 +1145,7 @@ export class CrawlerHost extends RPCHost {
                 if (
                     (!crawlOpts?.allocProxy || crawlOpts.allocProxy !== 'none') &&
                     !crawlOpts?.proxyUrl &&
-                    (analyzed.tokens < 42 || sideLoaded.status !== 200) &&
+                    (analyzed.tokens < 42 || sideLoaded.status !== 200 || Boolean(challenge)) &&
 
                     // No point retrying with proxy in these cases
                     ![201, 202, 404, 405].includes(sideLoaded.status)
@@ -1163,7 +1177,12 @@ export class CrawlerHost extends RPCHost {
                         return;
                     }
                     analyzed = await this.jsdomControl.analyzeHTMLTextLite(proxySnapshot.html);
-                    if (proxyLoaded.status === 200 || analyzed.tokens >= 200) {
+                    const proxyChallenge = detectChallengePage({
+                        html: proxySnapshot.html,
+                        title: analyzed.title,
+                        headers: proxyLoaded.headers,
+                    });
+                    if ((proxyLoaded.status === 200 || analyzed.tokens >= 200) && !proxyChallenge) {
                         proxySnapshot.isIntermediate = true;
                         if (sideLoadSnapshotPermitted) {
                             if (crawlOpts) {
@@ -1175,10 +1194,17 @@ export class CrawlerHost extends RPCHost {
                         }
                         sideLoaded = proxyLoaded;
                         fallbackProxyIsUsed = true;
+                        challenge = null;
+                    } else if (proxyChallenge) {
+                        this.logger.info(
+                            `Proxy retry also hit wall (${proxyChallenge.kind}:${proxyChallenge.matched}@${proxyChallenge.source})`,
+                            { url: urlToCrawl.href }
+                        );
+                        challenge = proxyChallenge;
                     }
                 }
 
-                if (crawlOpts && (sideLoaded.status === 200 || analyzed.tokens >= 200 || crawlOpts.allocProxy)) {
+                if (crawlOpts && !challenge && (sideLoaded.status === 200 || analyzed.tokens >= 200 || crawlOpts.allocProxy)) {
                     this.logger.info(`Side load seems to work, applying to crawler.`, { url: urlToCrawl.href });
                     crawlOpts.sideLoad ??= sideLoaded.sideLoadOpts;
                     if (fallbackProxyIsUsed) {
